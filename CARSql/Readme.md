@@ -14,6 +14,7 @@ Hadoop 2.8.5
 
 3.执行
 ```
+
 /usr/local/spark/bin/spark-submit --class "carSQL" --executor-cores 5 --num-executors 4 --executor-memory 14G --driver-memory 16G sparksql.jar data/31.csv
-```
+
 
