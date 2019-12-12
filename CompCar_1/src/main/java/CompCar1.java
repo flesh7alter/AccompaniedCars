@@ -5,6 +5,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.mllib.fpm.FPGrowth;
@@ -42,7 +43,7 @@ class Tuplecompatrtor implements Comparator<Tuple2<String, String>> {
 
 public class CompCar1 {
     public static void main(String[] args) {
-        double minSupport=0.01;
+        double minSupport=0.007;
         int numPartition=10;
         String logFile = "C:\\Users\\Zeay\\IdeaProjects\\TestSpark\\test_data2.csv"; // 换成你自己的路径
         SparkConf conf = new SparkConf().setAppName("Test Application");
@@ -116,17 +117,26 @@ public class CompCar1 {
                         return true;
                     }
                 });
-
+        JavaRDD<List<String>>transactions=RDD4
+                .flatMap(new FlatMapFunction<List<List<String>>, List<String>>() {
+                    @Override
+                    public Iterator<List<String>> call(List<List<String>> lists) throws Exception {
+                        List<List<String>> ll=new ArrayList<List<String>>();
+                        for(List<String> l : lists)
+                            ll.add(l);
+                        return ll.iterator();
+                    }
+                });
         //测试，打印10个路口的
-        for(List<List<String>> record: RDD4.take(10))
-            System.out.println(record+"\n");
+        //for(List<String> record: RDD5.take(10))
+            //System.out.println(record+"\n");
 
         //FPGrowth-Tree算法
-        //FPGrowth fpGrowth = new FPGrowth().setMinSupport(minSupport).setNumPartitions(numPartition);
-        //FPGrowthModel<String> model = fpGrowth.run(transactions);
+        FPGrowth fpGrowth = new FPGrowth().setMinSupport(minSupport).setNumPartitions(numPartition);
+        FPGrowthModel<String> model = fpGrowth.run(transactions);
 
-        //for(FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect())
-        //System.out.println("[" + itemset.javaItems() + "]," + itemset.freq());
+        for(FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect())
+        System.out.println("[" + itemset.javaItems() + "]," + itemset.freq());
 
     }
 }
