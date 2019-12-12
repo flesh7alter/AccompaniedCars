@@ -41,11 +41,10 @@ class Tuplecompatrtor implements Comparator<Tuple2<String, String>> {
 
 
 
+
 public class CompCar1 {
     public static void main(String[] args) {
-        double minSupport=0.01;
-        int numPartition=10;
-        String logFile = "C:\\Users\\Zeay\\IdeaProjects\\TestSpark\\test_data2.csv"; // 换成你自己的路径
+        String logFile = "C:\\Users\\Zeay\\IdeaProjects\\TestSpark\\31.csv"; // 换成你自己的路径
         SparkConf conf = new SparkConf().setAppName("Test Application");
         JavaSparkContext sc = new JavaSparkContext(conf);
 
@@ -117,11 +116,16 @@ public class CompCar1 {
             //System.out.println(record+"\n");
 
         //FPGrowth-Tree算法
-        FPGrowth fpGrowth = new FPGrowth().setMinSupport(minSupport).setNumPartitions(numPartition);
+        //设置最小支持度
+        long num=transactions.count();
+        double minSupport=5.0/num;
+        System.out.println("minSupport: "+minSupport);
+        int numPartition=10;
+       FPGrowth fpGrowth = new FPGrowth().setMinSupport(minSupport).setNumPartitions(numPartition);
         FPGrowthModel<String> model = fpGrowth.run(transactions);
 
-        for(FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect())
-        System.out.println("[" + itemset.javaItems() + "]," + itemset.freq());
+       for(FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect())
+       System.out.println("[" + itemset.javaItems() + "]," + itemset.freq());
 
     }
 }
