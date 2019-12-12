@@ -43,7 +43,7 @@ class Tuplecompatrtor implements Comparator<Tuple2<String, String>> {
 
 public class CompCar1 {
     public static void main(String[] args) {
-        double minSupport=0.002;
+        double minSupport=0.01;
         int numPartition=10;
         String logFile = "C:\\Users\\Zeay\\IdeaProjects\\TestSpark\\test_data2.csv"; // 换成你自己的路径
         SparkConf conf = new SparkConf().setAppName("Test Application");
