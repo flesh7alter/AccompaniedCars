@@ -30,22 +30,14 @@ import java.util.List;
 import java.lang.String;
 
 
-class Tuplecompatrtor implements Comparator<Tuple2<String, String>> {
 
 
-    public int compare(Tuple2<String, String> o1, Tuple2<String, String> o2) {
-
-        return o1._1.compareTo(o2._1);
-    }
-}
-
-
-
-public class CompCar1 {
+public class CompCar_Apriori {
     public static void main(String[] args) {
         double minSupport=0.002;
         int numPartition=10;
-        String logFile = "C:\\Users\\Zeay\\IdeaProjects\\TestSpark\\test_data2.csv"; // 换成你自己的路径
+        int minCount=5;
+        String logFile = "C:\\Users\\Zeay\\IdeaProjects\\TestSpark\\31.csv"; // 换成你自己的路径
         SparkConf conf = new SparkConf().setAppName("Test Application");
         JavaSparkContext sc = new JavaSparkContext(conf);
 
@@ -107,21 +99,34 @@ public class CompCar1 {
                     }
                 });
 
-        //去除空项
+        //去除空项\
         JavaRDD<List<List<String>>> RDD4=RDD3.filter(x->!x.isEmpty());
 
         //展开，生成原始数据集
         JavaRDD<List<String>>transactions=RDD4.flatMap(x->x.iterator());
+
         //测试，打印10个路口的
         //for(List<String> record: RDD5.take(10))
-            //System.out.println(record+"\n");
+        //System.out.println(record+"\n");
 
-        //FPGrowth-Tree算法
-        FPGrowth fpGrowth = new FPGrowth().setMinSupport(minSupport).setNumPartitions(numPartition);
-        FPGrowthModel<String> model = fpGrowth.run(transactions);
 
-        for(FPGrowth.FreqItemset<String> itemset : model.freqItemsets().toJavaRDD().collect())
-        System.out.println("[" + itemset.javaItems() + "]," + itemset.freq());
+        //Apriori算法
+        //展开，获取候选1项集
+        JavaRDD<String>RDD5=transactions.flatMap(x->x.iterator());
+
+        //生成候选1项集
+        JavaPairRDD<String,Integer>RDD6=RDD5.mapToPair(x->new Tuple2<>(x,1));
+        JavaPairRDD<String,Integer> RDD7 = RDD6.reduceByKey((x, y) -> x + y);
+
+        //按最小支持度计数过滤，生成频繁1项集
+        JavaPairRDD<String,Integer> RDD8=RDD7.filter(x->x._2>=minCount);
+
+
+        //测试，打印前100个频繁1项集以及频繁1项集大小
+       for( Tuple2<String,Integer> t:RDD8.take(100))
+            System.out.println(t);
+       System.out.println(RDD8.count()+"\n");
+
 
     }
 }
