@@ -58,9 +58,12 @@ public class carSQL {
 
     public static void main(String [] args) throws Exception {
         String file = args[0];
+
         String repeatedNum = args[1];
         System.out.println("Process file " + file);
         System.out.println("阈值" + repeatedNum);
+
+
         SparkSession spark = SparkSession
                 .builder()
                 .appName("Java Spark SQL basic example")
@@ -131,6 +134,7 @@ public class carSQL {
                         "(select carID1, carID2 from accompany " +
                         "group by carID1, carID2 " +
                         "having count(*) > "+repeatedNum+" )"
+
                         );
 
         /**
