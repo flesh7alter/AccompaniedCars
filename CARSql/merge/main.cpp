@@ -57,7 +57,7 @@ class DisjSet
     {
         return find(e1) == find(e2);
     }
-    void save(){
+    void save(string count){
         ofstream outFile("tuples.txt",ios::app);
         int size = parent.size();
         map<int, vector<int> > ret;
@@ -72,12 +72,12 @@ class DisjSet
             }
         }
         for(map<int, vector<int> >::iterator iter = ret.begin(); iter != ret.end(); iter++){
-            outFile<<_map[iter->first]<<',';
+            outFile<<"["<<_map[iter->first];
             int i = 0;
             for(;i!=iter->second.size();i++){
-                outFile<<_map[iter->second[i]]<<",";
+                outFile<<","<<_map[iter->second[i]];
             }
-            outFile<<endl;
+            outFile<<"]"<<count<<endl;
         }
     }
 };
@@ -86,22 +86,24 @@ class DisjSet
 int main(){
     ifstream inFile("result-all.txt", ios::in);
 	string str;
-	map<string,int> mp;
+	map<string,int> mp;    
     string count = "0";
     DisjSet* dst;
     int n = 0;
     int tuple = 0;
     while (getline(inFile, str)){
         vector<string> record;
-        SplitString(str.substr(1,str.size()-2),record,",");
+        SplitString(str.substr(1,str.size()-3),record,",");
         string car1 = record[0];
         string car2 = record[1];
         if(count!= "0" && count !=  record[2]){
-            dst->save();
+            dst->save(count);
             count =  record[2];
             delete dst;
             dst = new DisjSet(500);
-            tuple = 0;
+            mp.clear();
+            _map.clear();
+            n=0;
         }
         else if(count == "0"){
             count =  record[2];
@@ -112,17 +114,14 @@ int main(){
             mp[car1] = n;
             _map[n] = car1;
             n++;
-            tuple++;
         }
         if(mp.find(car2) == mp.end()){
             mp[car2] = n;
             _map[n] = car2;
             n++;
-            tuple++;
         }
         if(!dst->is_same(mp[car1],mp[car2])){
             dst->to_union(mp[car1],mp[car2]);
-            tuple--;
         }
         
     }
