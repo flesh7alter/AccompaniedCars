@@ -58,7 +58,11 @@ public class carSQL {
 
     public static void main(String [] args) throws Exception {
         String file = args[0];
+
+        String repeatedNum = args[1];
         System.out.println("Process file " + file);
+        System.out.println("阈值" + repeatedNum);
+
 
         SparkSession spark = SparkSession
                 .builder()
@@ -129,7 +133,8 @@ public class carSQL {
                         "WHERE (a.carID1, a.carID2) in " +
                         "(select carID1, carID2 from accompany " +
                         "group by carID1, carID2 " +
-                        "having count(*) > 100)"
+                        "having count(*) > "+repeatedNum+" )"
+
                         );
 
         /**
@@ -167,7 +172,7 @@ public class carSQL {
                 "SELECT carID1, carID2, COUNT(*) as repeatNum " +
                         "from accompany2  " +
                         "group by carID1, carID2 " +
-                        "having count(*) > 100 " +
+                        "having count(*) > "+repeatedNum +" "+
                         "ORDER BY repeatNum DESC"
         );
 
