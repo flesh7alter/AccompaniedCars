@@ -122,8 +122,6 @@ int main(){
         }
         if(!dst->is_same(mp[car1],mp[car2])){
             dst->to_union(mp[car1],mp[car2]);
-        }
-        
+        }        
     }
-
 }

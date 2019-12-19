@@ -1,0 +1,257 @@
+\documentclass[CJK]{ctexart}
+\CTEXsetup[format={\large\bfseries}]{section}
+\usepackage[top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{listings}
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{indentfirst}
+\usepackage{amssymb}
+\usepackage{multicol}
+\usepackage[superscript]{cite}
+\usepackage{xeCJK}
+\setmainfont{Times New Roman}
+\setmonofont{Consolas}
+\setCJKmainfont{simsun.ttc}
+
+\pagestyle{plain}
+\newenvironment{figurehere}
+{\def\@captype{figure}}
+{}
+\newenvironment{tablehere}
+{\def\@captype{table}}
+{}
+\lstset{
+ columns=fixed,
+ frame=none,
+ backgroundcolor=\color[RGB]{245,245,244},
+ keywordstyle=\color[RGB]{40,40,255},
+ numberstyle=\footnotesize\color{darkgray},
+ commentstyle=\it\color[RGB]{0,96,96},
+ stringstyle=\color[RGB]{128,0,0},
+ showstringspaces=false,
+ language=java,
+ tabsize=4,
+ basicstyle = \footnotesize\ttfamily,
+ breaklines=true,
+}
+
+\makeatletter
+\newcommand\figurecaption{\def\@captype{figure}\caption}
+\newcommand\tablecaption{\def\@captype{table}\caption}
+\makeatother
+\begin{document}
+\begin{center}
+{\LARGE \textbf {大数据分析技术论文}}
+\end{center}
+
+\begin{center}
+署名写两行吧，把姓名学号都写上
+\newline
+\end{center}
+\setlength{\columnsep}{1cm}
+\begin{multicols}{2}
+\begin{center}
+{\large \textbf {摘要}}
+\end{center}
+    这里写摘要。整完了一起写摘要。
+\section{项目背景}
+{\normalsize {
+    该项目基于某地区一个月内的路口车辆监控数据。每条数据表示为[car, crossroad, timestamp],分别表示车辆标号，路口编号和时间戳。
+    在这31的数据中，共有2.7亿条记录，文件大小约为5.7GB。不同的车辆约有2300万，路口数量约为1000。
+
+    项目的任务是寻找出所有的伴随车，即总是同时出现在的同一路口的车辆。
+    对数量如此巨大的数据集进行挖掘，显然我们不能再着眼于传统的解决方法，而需要利用特定的技术来进行数据处理。
+
+}}
+\section{相关工作}
+\subsection{Spark}
+\subsubsection{产生背景}
+    作为分布式计算的经典解决方案，Mapreduce由于对HDFS要进行频繁的操作（如计算结果持久化，数据备份，shuffle等），导致磁盘IO成为了系统性能的瓶颈，因此Mapreduce对于迭代式，交互式以及流式数据的处理就显得力不从心。
+\subsubsection{Spark简介}
+Spark是一个开源的分布式计算框架，对Java，Scala提供了高层的API，并且有一个经优化的支持通用执行图计算的引擎。与传统MapReduce分布式计算模型相比，spark速度更快的原因是：
+
+1.MapReduce基于的Hadoop需要频繁把结果落盘到hdfs上，网络与磁盘IO开销非常大，但是spark可以把必要的运算结果缓存到内存中，从而减少了磁盘IO开销。
+
+2.在复杂的运算中，数据的运算需要经历多个步骤，而spark可以把每个操作抽象为一个operator,然后这些操作串成一个有向无环图，进而优化计算路径。
+
+3.Spark引入了弹性分布式数据集RDD，RDD可以理解为一个分布式对象集合，每个RDD可以分为多个分区，每个分区就是一个数据集片段，一个RDD的不同分区可以保存到集群中的不同节点上，从而可以实现不同节点上的并行计算。
+
+RDD的特点：
+
+1.只读：不能修改，只能通过转换操作生成新的RDD。
+
+2.分布式：可以分布在多台机器上并行处理。
+
+3.弹性：计算过程中内存不够的时候会与磁盘进行数据交换。
+
+4.基于内存：可以全部或者部分缓存在内存中，在多次计算间重用。
+\subsubsection{Spark SQL}
+Spark SQL主要用于结构化的数据处理，其本身也可以作为一个分布式的查询引擎，即可以同时对存储于多个节点上的数据做查询。
+
+Spark SQL之所以速度如此之快，是因为它是一种纯内存计算模型，基本上消灭了数据磁盘寻道和IO的时间开销，而磁盘的overhead恰恰是Mapreduce和Hive的性能瓶颈所在。
+\subsubsection{Spark SQL特点}
+
+1.SQL可以和Spark编程模型完美融合，结构化的数据可以在Spark程序内使用SQL或者DataFrame API同时进行处理，一方面利用了SQL的简单语法便于对数据范式进行组织，另一方面又有利于使用函数式编程模型来进行复杂的数据分析。
+
+2.大大优化了SQL的Interpreter和Optimizer，整合了 cost-based optimizer, code generation and columnar storage 使得在进行并行计算的同时可以保证查询语句的高性能。
+
+\section{方法A}
+如果两辆车出现在同一路口的时间相近，则可以认为这两辆车伴随一次。对于总是伴随的多辆车，认定为一组伴随车队。
+
+对于当前任务，我们期望获取记录中的多个伴随车队。而要获取所有的伴随车对，就需要对整个原始数据进行分析。
+
+该算法将首先对原始数据进行分割成31份文件，每个文件对应一天的数据。接着通过一些阈值对数据进行过滤，再对过滤后的记录做数据挖掘处理。
+
+这里用到的数据挖掘方法的核心思想是通过把数据读取成Spark Sql的一张表，然后使用对应的sql语句查询出所有伴随车的二元组以及其伴随次数，保存到中间文件。再对中间文件进行进一步处理，输出相关结果。
+\subsection{数据分割和过滤}
+原始文件共有2.7亿条数据，受限于设备的内存性能，对这样的数据进行直接排序比较困难。考虑到这样的情况，我们选择只对所有记录进行筛选，将数据分成31份。
+
+这一步准备工作，由单机完成。通过python的相关数据处理库pandas。我们的设备读入原始文件，并对时间戳做筛选，将对应日期的记录输出到对应的文件。
+
+这样获取的31份文件内部未排序，平均每个文件中包含800万条记录。在Linux中，利用命令行对每个文件按照时间、路口作为关键词进行排序。
+
+经过我们对数据的初步感知，结果中的伴随车伴随次数应该至少为千级，且对800万条数据做处理依然是一个比较困难的问题，我们希望进一步在可控范围内控制文件中记录的数量。我们首先对每个文件按照路口进行归并，并统计每个路口当日
+的车辆记录数量。事实上，在现实情况下，我们去掉某一个路口的数据，是不会对最后的伴随车判断结果造成影响的。
+
+由于记录数越多的路口，计算起来越困难，所以我们会将每天数量最多的6个路口的数据去除。
+
+除此之外，对于剩下的数据，我们将统计每辆车出现的次数。因为结果中伴随车的出现次数必然大于伴随次数，则我们可以认为出现次数比较少的车，是不大可能成为伴随车的。所以，对于当日出现次数小于10的车辆，我们也会删去对应的记录。
+
+经过这样的处理之后，将31个文件剩下的记录合并，得到大约280万条记录。最终的结果就由这280w条数据产生。
+
+\subsection{数据读取}
+原始文件中的每一条数据，都有三个项[car, crossroad, timestamp]用逗号隔开，且没有经过任何排序。
+我们通过java将每一条数据读取为carinfo的数据结构，以便下一步的处理。
+\begin{lstlisting}
+public static class carInfo implements Serializable {
+    private int carID;
+    private int roadID;
+    private Long timestamp;
+}
+\end{lstlisting}
+读取hdfs上的源文件，转化为Spark的RDD数据类型，然后调用map，重载一个转换函数，把csv的每一行转化为一个CARINFO对象。然后把RDD转化为Spark Sql的一个Dataset,然后创建一个Spark Sql的"car"表。
+\begin{lstlisting}
+JavaRDD<carInfo> carRDD = spark.read()
+    .textFile("hdfs://10.141.212.225:9000/"+file)
+    .javaRDD()
+    .map(new Function<String, carInfo>() {
+        @Override
+        public carInfo call(String lines) throws Exception {
+            String[] line = lines.split(",");
+            int lenTimestamp = line[2].length();
+            carInfo CARINFO = new carInfo();
+            CARINFO.setCarID(Integer.parseInt(line[0]));
+            CARINFO.setRoadID(Integer.parseInt(line[1]));
+            CARINFO.setTimestamp(Long.parseLong(line[2].substring(0,lenTimestamp-1)));
+            return CARINFO;
+        }
+    });
+Dataset<Row> carDF = spark.createDataFrame(carRDD, carInfo.class);
+carDF.createOrReplaceTempView("car");
+\end{lstlisting}
+\subsection{获取伴随车组}
+将数据读入后，我们需要获取所有的伴随车。如果前后两辆车在同一路口出现并且出现时间相差在90秒内，就判定为一次伴随。
+这一步，我们将对读入的所有carinfo进行处理，得到所有的伴随车对。
+\begin{lstlisting}
+Dataset<Row> carId1DF = spark.sql(
+    "SELECT car1.carID as carID1, car2.carID as carID2  " +
+    "from car car1, car car2 " +
+    "WHERE car1.roadID = car2.roadID " +
+    "AND ABS(car1.timestamp-car2.timestamp) < 90 " +
+    "AND car1.carID != car2.carID");
+carId1DF.createOrReplaceTempView("accompany");
+\end{lstlisting}
+
+
+\subsection{数据去重并统计伴随次数}
+显然，上一步得到的数据中必定存在大量重复。所以我们对每一个伴随车对，统计它们的伴随次数，以判断它们是否较为频繁出现伴随现象。
+结果中只保留伴随次数超过10000的伴随车对，作为我们的结果并保存到result-all.txt中。
+\begin{lstlisting}
+Dataset<Row> carId2DF = spark.sql(
+    "SELECT carID1, carID2 " +
+    "from accompany a " +
+    "WHERE (a.carID1, a.carID2) in " +
+    "(select carID1, carID2 from accompany " +
+    "group by carID1, carID2 " +
+    "having count(*) > 10000)"
+    );
+\end{lstlisting}
+
+
+\subsection{项目实现}
+\subsubsection{实验环境}
+    数据初步分割和过滤部分基于单机进行，运行环境为。
+
+    我们一共使用了5台server，ip为10.141.212.223-227。基于这五台设备，配置hadoop和spark，其中一台为master，其他为slave。
+    hadoop版本为，spark版本为。
+\subsubsection{实验过程}
+    在3台Spark节点上运行该程序，总耗时约5分钟对280多万条数据进行处理，其中包括3个sql语句的执行，两个中间表的生成以及最终结果保存到文件的过程。
+    相关代码见github。
+\subsubsection{实验结果}
+    实验得到的伴随车对数据共有条，其中伴随次数最高为62万余次。
+
+\section{性能分析}
+    整个生成伴随车对的核心部分，共耗时10分钟左右。相较于要是数据而言，其性能已经非常卓越。如此卓越的性能，主要得益于Spark和sql的结合实现过程。
+
+\subsection{spark SQL的执行过程}
+spark SQL的执行过程主要分为以下三步
+
+1.首先经过SQL Parser对SQL进行词法分析，语法分析，语义分析等生成语法树
+
+2.Catalyst优化器对语法树进行进一步优化处理
+
+3.最后转化为RDD的一个有向无环图交给Spark执行
+
+其中，sparkSQL高性能的核心是Catalyst Optimizer,可以把其功能类比为spark的DAG scheduler。
+
+DAG scheduler 负责把RDD构建成一个有向无环图，并且给出一套执行RDD的执行计划。而Catalyst Optimizer则用来把构造Dataset的变换操作转化为sql执行的物理计划，本质上就是优化从Dataset转化为RDD的执行计划的过程。
+
+Catalyst Optimizer进行的过程可以划分为：
+
+1、Analysis： 主要把parser转化后的Unresolved Logical Plan转化为Analyzed Logical Plan
+
+2、Logical Optimization: 利用一些优化规则把Logical Plan转化为Optimized Logical Plan
+
+3、Physical Planning：逻辑计划不能直接被Spark执行，需要利用代价模型(cost model)选择性能最佳的physical plan
+
+4、代码生成器把SQL查询生成Java的字节码
+
+\subsection{Catalyst Optimizer}
+1.Analysis
+
+Analysis处理的基本数据结构有两种：SQL parser返回的抽象语法树或者是程序中API创建的DataFrame或者Dataset.这里的分析主要是要解决未解析的属性引用或者关系：
+
+`select carId from car;`
+
+carId这个column的类型是什么以及其是否有效，在我们查找表之前都是不知道的，也就是说这个属性是未解析的。首先构建一个包含未绑定属性和数据类型的“Unresolved Logical Plan”树，然后使用Catalyst规则和跟踪所有数据源中的表的Catalog对象来解析这些属性。
+
+2.Logical Optimization
+
+上一个步骤得到的Analyzed Logical Plan可以直接转化为Physical Plan然后在Spark中执行，但是这样得到的Physical Plan不一定是最优的。因此要进行逻辑优化以得到更优的逻辑算子语法树，这是完全基于预先设定的启发式规则的。
+
+常见规则包括：
+
+列裁剪(过滤掉查询不需要使用的列)；
+
+谓词下移(把where过滤操作尽可能下沉到数据源端，尽早进行数据的过滤)；
+
+常量折叠(预先计算好常量)；
+
+Bool表达式简化等。
+
+3.Physical Planning
+
+逻辑计划是不能直接在Spark执行的，所以必须要翻译成物理计划。一个逻辑计划经过一系列处理后会得到许多物理计划，在Spark sql中是通过SparkPlan实现的。多个物理计划再经过代价模型(Cost Model)得到选择后的物理计划(Selected Physical Plan)。
+
+Cost Model核心思想是计算每个物理计划的代价，然后选择代价最少的作为候选计划。
+
+4.Code Generation
+
+最后把物理计划转化为Java的字节码，这里Catalyst利用了Scala的语言特性：Quasiquotes（预引用）
+
+Quasiquotes允许在Scala语言中编程构造抽象语法树（AST），然后可以在运行时将其提供给Scala编译器以生成字节码。我们使用Catalyst将表示SQL中表达式的树转换为AST，以便Scala代码评估该表达式，然后编译并运行生成的代码。
+
+换句话说，当我们需要访问某些对象的字段的时候，我们可以直接通过代码生成直接访问这些字段，就不需要把对象复制到Spark并存储为Row，即预引用大大加速了代码生成以及评估这一过程。
+\end{multicols}
+\end{document}
